@@ -54,6 +54,7 @@ public class JsonClient {
         Class.forName("org.postgresql.Driver");
         Ignition.setClientMode(true);
         Ignite ignite = Ignition.start(args[0]);
+        ignite.active(true);
         try (IgniteCache<Long, JsonData> jsonCache = ignite.getOrCreateCache("jsonCache")) {
             /*
              * Loading all cache
