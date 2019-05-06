@@ -19,6 +19,11 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
     @SpringResource(resourceName = "dataSource")
     private DataSource dataSource;
 
+    /**
+     * Size of loaded blocks to control heap usage
+     */
+    private int batchSize = 100000;
+
     private final String TABLE = "json_tables";
 
     @Override
@@ -95,6 +100,7 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
         try (Connection conn = dataSource.getConnection()) {
             conn.setAutoCommit(false);
             Statement stmt = conn.createStatement();
+            stmt.setFetchSize(batchSize);
             try (ResultSet rs = stmt.executeQuery("select * from " + TABLE + ";")) {
                 while (rs.next()) {
                     Long key = rs.getLong(1);
