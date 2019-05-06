@@ -19,10 +19,13 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
     @SpringResource(resourceName = "dataSource")
     private DataSource dataSource;
 
+    private final String TABLE = "json_tables";
+
     @Override
     public JsonData load(Long key) throws CacheLoaderException {
         try (Connection conn = dataSource.getConnection()) {
-            try (PreparedStatement st = conn.prepareStatement("select * from example where id = ?")) {
+            try (PreparedStatement st = conn
+                    .prepareStatement("select * from " + TABLE + " where id = ?")) {
                 st.setLong(1, key);
                 ResultSet rs = st.executeQuery();
                 if (rs.next()) {
@@ -34,7 +37,8 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
                 throw new CacheLoaderException("Failed to load object [key=" + key + ']', e);
             }
         } catch (SQLException e) {
-            throw new CacheLoaderException("Failed to get connection when load object [key=" + key + ']', e);
+            throw new CacheLoaderException(
+                    "Failed to get connection when load object [key=" + key + ']', e);
         }
     }
 
@@ -44,7 +48,8 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
         JsonData json = entry.getValue();
         try (Connection conn = dataSource.getConnection()) {
             int updated;
-            try (PreparedStatement stmt = conn.prepareStatement("update example set data = ? where id = ?")) {
+            try (PreparedStatement stmt = conn
+                    .prepareStatement("update " + TABLE + " set data = ? where id = ?")) {
                 stmt.setString(1, json.getData());
                 stmt.setLong(2, json.getId());
                 updated = stmt.executeUpdate();
@@ -52,7 +57,8 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
                 throw new CacheLoaderException("Failed to update object [key=" + key + ']', e);
             }
             if (updated == 0) {
-                try (PreparedStatement stmt = conn.prepareStatement("insert into example (id, data) values (?, ?)")) {
+                try (PreparedStatement stmt = conn
+                        .prepareStatement("insert into " + TABLE + " (id, data) values (?, ?)")) {
                     stmt.setLong(1, json.getId());
                     stmt.setString(2, json.getData());
 
@@ -62,30 +68,34 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
                 }
             }
         } catch (SQLException e) {
-            throw new CacheLoaderException("Failed to get connection when write object [key=" + key + ']', e);
+            throw new CacheLoaderException(
+                    "Failed to get connection when write object [key=" + key + ']', e);
         }
     }
 
     @Override
     public void delete(Object key) throws CacheWriterException {
         try (Connection conn = dataSource.getConnection()) {
-            try (PreparedStatement stmt = conn.prepareStatement("delete from example where id=?")) {
+            try (PreparedStatement stmt = conn
+                    .prepareStatement("delete from " + TABLE + " where id=?")) {
                 stmt.setInt(1, (Integer) key);
                 stmt.executeUpdate();
             } catch (SQLException e) {
                 throw new CacheWriterException("Failed to delete object [key=" + key + ']', e);
             }
         } catch (SQLException e) {
-            throw new CacheWriterException("Failed to get connection when delete object [key=" + key + ']', e);
+            throw new CacheWriterException(
+                    "Failed to get connection when delete object [key=" + key + ']', e);
         }
     }
 
     @Override
-    public void loadCache(IgniteBiInClosure<Long, JsonData> clo, Object... args) throws CacheLoaderException {
+    public void loadCache(IgniteBiInClosure<Long, JsonData> clo, Object... args)
+            throws CacheLoaderException {
         try (Connection conn = dataSource.getConnection()) {
             conn.setAutoCommit(false);
             Statement stmt = conn.createStatement();
-            try (ResultSet rs = stmt.executeQuery("select * from example;")) {
+            try (ResultSet rs = stmt.executeQuery("select * from " + TABLE + ";")) {
                 while (rs.next()) {
                     Long key = rs.getLong(1);
                     String data = rs.getString(2);

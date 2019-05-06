@@ -14,25 +14,25 @@ import model.JsonData;
 
 public class JsonClient {
 
-    private final static String APPENDIX = "SELECT COUNT(id) FROM example";
-    private final static String QUERY_1 = APPENDIX + "WHERE DATA->>'brand' = '\"ACME\"';";
+    final static String APPENDIX = "SELECT COUNT(id) FROM json_tables";
+    private final static String QUERY_1 = APPENDIX + " WHERE DATA->>'brand' = '\"ACME\"';";
     private final static String QUERY_2 = APPENDIX
-            + "WHERE DATA?'name' AND DATA->>'name; = '\"AC3 Case Red\"';";
-    private final static String QUERY_3 = APPENDIX + "WHERE DATA?&'[type, name, price]';";
+            + " WHERE DATA?'name' AND DATA->>'name' = '\"AC3 Case Red\"';";
+    private final static String QUERY_3 = APPENDIX + " WHERE DATA?&'[type, name, price]';";
     private final static String QUERY_4 = APPENDIX
-            + "WHERE DATA?&'[type, name, price, available]' and data->>'type' = '\"phone\"';";
-    private final static String QUERY_5 = APPENDIX + "WHERE DATA->'limits'->'voice'->>'n' > 400;";
-    private final static String QUERY_6 = APPENDIX + "WHERE DATA#>>'{limits, voice, n}' > 400;";
+            + " WHERE DATA?&'[type, name, price, available]' and data->>'type' = '\"phone\"';";
+    private final static String QUERY_5 = APPENDIX + " WHERE DATA->'limits'->'voice'->>'n' > 400;";
+    private final static String QUERY_6 = APPENDIX + " WHERE DATA#>>'{limits, voice, n}' > 400;";
     private final static String QUERY_7 = APPENDIX
-            + "WHERE DATA?'color' and DATA->>'color' = '\"black\"' and DATA?'price' and DATA->>'price' = 12.5;";
+            + " WHERE DATA?'color' and DATA->>'color' = '\"black\"' and DATA?'price' and DATA->>'price' = 12.5;";
     private final static String QUERY_8 = APPENDIX
-            + "WHERE DATA@>'{\"color\":\"black\", \"price\":12.5}';";
+            + " WHERE DATA@>'{\"color\":\"black\", \"price\":12.5}';";
 
-    private final static String[] QUERY = { QUERY_1, QUERY_2, QUERY_3, QUERY_4, QUERY_5, QUERY_6,
-            QUERY_7, QUERY_8 };
+    final static String[] QUERY = { QUERY_1, QUERY_2, QUERY_3, QUERY_4, QUERY_5, QUERY_6, QUERY_7,
+            QUERY_8 };
 
-    private final static int RUNS = 10;
-    private final static int QUES = 8;
+    private final static int RUNS = 1;
+    final static int QUES = QUERY.length;
 
     private static ArrayList<Long> runQuery(String sql, IgniteCache cache) {
         ArrayList<Long> res = new ArrayList<Long>();
@@ -42,13 +42,10 @@ public class JsonClient {
         for (int i = 0; i < RUNS; i++) {
             long time = System.currentTimeMillis();
             FieldsQueryCursor<?> cur = cache.query(query);
-            cur.getAll();
-            time = time - System.currentTimeMillis();
+            System.out.println(cur.getAll());
+            time = System.currentTimeMillis() - time;
             res.add(time);
         }
-        Collections.min(res);
-        Collections.max(res);
-        res.stream().mapToLong(n -> n).average().getAsDouble();
         return res;
     }
 
