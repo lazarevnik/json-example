@@ -31,7 +31,7 @@ public class JsonClient {
     final static String[] QUERY = { QUERY_1, QUERY_2, QUERY_3, QUERY_4, QUERY_5, QUERY_6, QUERY_7,
             QUERY_8 };
 
-    private final static int RUNS = 1;
+    private final static int RUNS = 10;
     final static int QUES = QUERY.length;
 
     private static ArrayList<Long> runQuery(String sql, IgniteCache cache) {
