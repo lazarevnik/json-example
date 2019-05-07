@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import javax.cache.Cache.Entry;
 import javax.cache.integration.CacheLoaderException;
 import javax.cache.integration.CacheWriterException;
@@ -102,11 +104,15 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
             Statement stmt = conn.createStatement();
             stmt.setFetchSize(batchSize);
             try (ResultSet rs = stmt.executeQuery("select * from " + TABLE + ";")) {
+                ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
                 while (rs.next()) {
-                    Long key = rs.getLong(1);
-                    String data = rs.getString(2);
-                    clo.apply(key, new JsonData(key, data));
+                    // Long key = rs.getLong(1);
+                    // String data = rs.getString(2);
+                    CloApply task = new CloApply(clo, rs.getLong(1), rs.getString(2));
+                    executor.execute(task);
+                    // clo.apply(key, new JsonData(key, data));
                 }
+                executor.shutdown();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -114,6 +120,25 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+    class CloApply implements Runnable {
+
+        private IgniteBiInClosure<Long, JsonData> clo;
+        private Long key;
+        private String data;
+
+        CloApply(IgniteBiInClosure<Long, JsonData> clo, Long key, String data) {
+            this.clo = clo;
+            this.key = key;
+            this.data = data;
+        }
+
+        @Override
+        public void run() {
+            clo.apply(key, new JsonData(key, data));
+        }
+
     }
 
 }

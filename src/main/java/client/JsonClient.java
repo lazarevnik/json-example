@@ -2,6 +2,11 @@ package client;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import javax.cache.CacheException;
 import javax.cache.integration.CacheLoaderException;
@@ -31,21 +36,62 @@ public class JsonClient {
     final static String[] QUERY = { QUERY_1, QUERY_2, QUERY_3, QUERY_4, QUERY_5, QUERY_6, QUERY_7,
             QUERY_8 };
 
-    private final static int RUNS = 10;
+    private final static int RUNS = 20;
+    private final static int THREADS = 20;
     final static int QUES = QUERY.length;
+
+    static class MyCacheQuery implements Callable<Long> {
+        private static SqlFieldsQuery statQuery = null;
+        private static IgniteCache statCache = null;
+
+        // public MyCacheQuery(SqlFieldsQuery query) {
+        // this.query = query;
+        // }
+
+        public static void setCache(IgniteCache cache) {
+            statCache = cache;
+        }
+
+        public static void setQuery(SqlFieldsQuery query) {
+            statQuery = query;
+        }
+
+        @Override
+        public Long call() {
+            long time = System.currentTimeMillis();
+            FieldsQueryCursor<?> cur = statCache.query(statQuery);
+            System.out.println(cur.getAll());
+            time = System.currentTimeMillis() - time;
+            return time;
+        }
+    }
 
     private static ArrayList<Long> runQuery(String sql, IgniteCache cache) {
         ArrayList<Long> res = new ArrayList<Long>();
-
         SqlFieldsQuery query = new SqlFieldsQuery(sql);
-
+        MyCacheQuery.setQuery(query);
+        ExecutorService executor = Executors.newFixedThreadPool(THREADS);
+        ArrayList<Future<Long>> list = new ArrayList<>();
         for (int i = 0; i < RUNS; i++) {
-            long time = System.currentTimeMillis();
-            FieldsQueryCursor<?> cur = cache.query(query);
-            System.out.println(cur.getAll());
-            time = System.currentTimeMillis() - time;
-            res.add(time);
+            Callable<Long> call = new MyCacheQuery();
+            list.add(executor.submit(call));
         }
+        executor.shutdown();
+        // for (int i = 0; i < RUNS; i++) {
+        // long time = System.currentTimeMillis();
+        // FieldsQueryCursor<?> cur = cache.query(query);
+        // System.out.println(cur.getAll());
+        // time = System.currentTimeMillis() - time;
+        // res.add(time);
+        // }
+        list.forEach(f -> {
+            try {
+                res.add(f.get());
+            } catch (InterruptedException | ExecutionException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        });
         return res;
     }
 
@@ -55,11 +101,13 @@ public class JsonClient {
         Ignition.setClientMode(true);
         Ignite ignite = Ignition.start(args[0]);
         ignite.active(true);
+        // IgniteConfiguration cfg = new IgniteConfiguration();
         try (IgniteCache<Long, JsonData> jsonCache = ignite.getOrCreateCache("jsonCache")) {
             /*
              * Loading all cache
              */
             jsonCache.clear();
+
             long begin = System.currentTimeMillis();
             try {
                 jsonCache.loadCache(null);
@@ -71,7 +119,7 @@ public class JsonClient {
             long loaded = System.currentTimeMillis();
 
             System.out.println("Loaded in " + (loaded - begin));
-
+            MyCacheQuery.setCache(jsonCache);
             try {
                 for (int i = 0; i < QUES; i++) {
                     ArrayList<Long> times = runQuery(QUERY[i], jsonCache);
@@ -80,6 +128,8 @@ public class JsonClient {
                     System.out.println("Max time: " + Collections.max(times));
                     System.out.println("Avg time: "
                             + times.stream().mapToLong(n -> n).average().getAsDouble());
+                    System.out.println(
+                            "Avg time: " + (times.stream().mapToLong(n -> n).sum() / RUNS));
                 }
             } catch (Exception e) {
                 System.err.println("Failed to execute SqlQuery");
