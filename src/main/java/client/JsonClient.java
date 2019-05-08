@@ -60,7 +60,7 @@ public class JsonClient {
         public Long call() {
             long time = System.currentTimeMillis();
             FieldsQueryCursor<?> cur = statCache.query(statQuery);
-            System.out.println(cur.getAll());
+            // System.out.println(cur.getAll());
             time = System.currentTimeMillis() - time;
             return time;
         }
