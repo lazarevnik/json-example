@@ -37,7 +37,7 @@ public class JsonClient {
             QUERY_8 };
 
     private final static int RUNS = 20;
-    private final static int THREADS = 20;
+    private final static int THREADS = 4;
     final static int QUES = QUERY.length;
 
     static class MyCacheQuery implements Callable<Long> {
@@ -122,7 +122,7 @@ public class JsonClient {
             System.out.println("Loaded in " + (loaded - begin));
             MyCacheQuery.setCache(jsonCache);
             try {
-                for (int i = 0; i < QUES; i++) {
+                for (int i = 0; i < 1; i++) {
                     ArrayList<Long> times = runQuery(QUERY[i], jsonCache);
                     System.out.println(QUERY[i] + " :");
                     System.out.println("Min time: " + Collections.min(times));
