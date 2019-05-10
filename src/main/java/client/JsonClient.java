@@ -2,6 +2,7 @@ package client;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +21,7 @@ import model.JsonData;
 public class JsonClient {
 
     final static String APPENDIX = "SELECT COUNT(id) FROM json_tables";
+    private final static String QUERY_0 = APPENDIX + ";";
     private final static String QUERY_1 = APPENDIX + " WHERE DATA->>'brand' = '\"ACME\"';";
     private final static String QUERY_2 = APPENDIX
             + " WHERE DATA?'name' AND DATA->>'name' = '\"AC3 Case Red\"';";
@@ -33,11 +35,11 @@ public class JsonClient {
     private final static String QUERY_8 = APPENDIX
             + " WHERE DATA@>'{\"color\":\"black\", \"price\":12.5}';";
 
-    final static String[] QUERY = { QUERY_1, QUERY_2, QUERY_3, QUERY_4, QUERY_5, QUERY_6, QUERY_7,
-            QUERY_8 };
+    final static String[] QUERY = { QUERY_0, QUERY_1, QUERY_2, QUERY_3, QUERY_4, QUERY_5, QUERY_6,
+            QUERY_7, QUERY_8 };
 
     private final static int RUNS = 20;
-    private final static int THREADS = 4;
+    private final static int THREADS = 5;
     final static int QUES = QUERY.length;
 
     static class MyCacheQuery implements Callable<Long> {
@@ -60,8 +62,8 @@ public class JsonClient {
         public Long call() {
             long time = System.currentTimeMillis();
             FieldsQueryCursor<?> cur = statCache.query(statQuery);
-            cur.getAll();
-            // System.out.println(cur.getAll());
+            // cur.getAll();
+            System.out.println(cur.getAll());
             time = System.currentTimeMillis() - time;
             return time;
         }
@@ -122,7 +124,13 @@ public class JsonClient {
             System.out.println("Loaded in " + (loaded - begin));
             MyCacheQuery.setCache(jsonCache);
             try {
-                for (int i = 0; i < 1; i++) {
+                for (int i = 0; i < RUNS; i++) {
+                    SqlFieldsQuery query = new SqlFieldsQuery(QUERY[1]);
+                    FieldsQueryCursor<List<?>> cur = jsonCache.query(query);
+                    cur.getAll();
+                }
+
+                for (int i = 1; i < QUES; i++) {
                     ArrayList<Long> times = runQuery(QUERY[i], jsonCache);
                     System.out.println(QUERY[i] + " :");
                     System.out.println("Min time: " + Collections.min(times));

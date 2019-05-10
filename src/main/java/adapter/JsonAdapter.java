@@ -14,6 +14,9 @@ import javax.sql.DataSource;
 import org.apache.ignite.cache.store.CacheStoreAdapter;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.apache.ignite.resources.SpringResource;
+import org.h2.util.json.JSONStringSource;
+import org.h2.util.json.JSONValue;
+import org.h2.util.json.JSONValueTarget;
 import model.JsonData;
 
 public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
@@ -36,7 +39,11 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
                 st.setLong(1, key);
                 ResultSet rs = st.executeQuery();
                 if (rs.next()) {
-                    return new JsonData(rs.getLong(1), rs.getString(2));
+                    String value = rs.getString(2);
+                    JSONValueTarget target = new JSONValueTarget();
+                    JSONStringSource.parse(value, target);
+                    JSONValue parsed = target.getResult();
+                    return new JsonData(rs.getLong(1), parsed);
                 } else {
                     return null;
                 }
@@ -57,7 +64,7 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
             int updated;
             try (PreparedStatement stmt = conn
                     .prepareStatement("update " + TABLE + " set data = ? where id = ?")) {
-                stmt.setString(1, json.getData());
+                stmt.setString(1, json.getData().toString());
                 stmt.setLong(2, json.getId());
                 updated = stmt.executeUpdate();
             } catch (SQLException e) {
@@ -67,7 +74,7 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
                 try (PreparedStatement stmt = conn
                         .prepareStatement("insert into " + TABLE + " (id, data) values (?, ?)")) {
                     stmt.setLong(1, json.getId());
-                    stmt.setString(2, json.getData());
+                    stmt.setString(2, json.getData().toString());
 
                     stmt.executeUpdate();
                 } catch (SQLException e) {
@@ -106,9 +113,11 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
             try (ResultSet rs = stmt.executeQuery("select * from " + TABLE + ";")) {
                 ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
                 while (rs.next()) {
-                    // Long key = rs.getLong(1);
-                    // String data = rs.getString(2);
-                    CloApply task = new CloApply(clo, rs.getLong(1), rs.getString(2));
+                    String value = rs.getString(2);
+                    JSONValueTarget target = new JSONValueTarget();
+                    JSONStringSource.parse(value, target);
+                    JSONValue parsed = target.getResult();
+                    CloApply task = new CloApply(clo, rs.getLong(1), parsed);
                     executor.execute(task);
                     // clo.apply(key, new JsonData(key, data));
                 }
@@ -126,9 +135,9 @@ public class JsonAdapter extends CacheStoreAdapter<Long, JsonData> {
 
         private IgniteBiInClosure<Long, JsonData> clo;
         private Long key;
-        private String data;
+        private JSONValue data;
 
-        CloApply(IgniteBiInClosure<Long, JsonData> clo, Long key, String data) {
+        CloApply(IgniteBiInClosure<Long, JsonData> clo, Long key, JSONValue data) {
             this.clo = clo;
             this.key = key;
             this.data = data;

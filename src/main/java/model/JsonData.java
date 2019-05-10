@@ -1,31 +1,33 @@
 package model;
 
+import org.h2.util.json.JSONValue;
+
 public class JsonData {
-    
+
     private Long id;
-    private String data;
-    
-    public JsonData(Long id, String data) {
+    private JSONValue data;
+
+    public JsonData(Long id, JSONValue data) {
         this.id = id;
         this.data = data;
     }
-    
+
     public Long getId() {
         return id;
     }
-    
+
     public void setId(Long id) {
         this.id = id;
     }
-    
-    public String getData() {
+
+    public JSONValue getData() {
         return data;
     }
-    
-    public void setData(String s) {
+
+    public void setData(JSONValue s) {
         this.data = s;
     }
-    
+
     public String toString() {
         return String.format("[JsonData] id = %d\n data = %s\n", id, data.toString());
     }
